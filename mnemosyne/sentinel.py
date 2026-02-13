@@ -37,3 +37,81 @@ Example Output:
   ]
 }
 """
+
+# SENTINEL AGENT
+
+class Sentinel:
+    """
+    Layer 1: Extracts memory candidates using an LLM (Gemini Flash).
+    Runs asynchronously in the background.
+    """
+
+    def __init__(self, confidence_threshold: float = CONFIDENCE_THRESHOLD):
+        self.threshold = confidence_threshold
+        # Initialize Gemini Model specifically for JSON output
+        self.model = genai.GenerativeModel(
+            model_name="gemini-2.5-flash",
+            generation_config={"response_mime_type": "application/json"},
+            system_instruction=SYSTEM_PROMPT
+        )
+
+    def extract(self, user_message: str, turn_number: int) -> ExtractionResult:
+        """
+        Sends the user message to Gemini Flash to extract memory candidates.
+        """
+        candidates = []
+        raw_text = ""
+
+        try:
+            # 1. Call Gemini
+            response = self.model.generate_content(
+                f"User Message: \"{user_message}\""
+            )
+            raw_text = response.text
+            
+            # 2. Parse JSON
+            data = json.loads(raw_text)
+            raw_memories = data.get("memories", [])
+
+            # 3. Convert to internal MemoryObject format
+            for item in raw_memories:
+                try:
+                    # Validate Type
+                    mem_type_str = item.get("type", "fact").lower()
+                    # Map common LLM mistakes to valid enums if necessary
+                    if mem_type_str not in [t.value for t in MemoryType]:
+                        mem_type_str = "fact"
+                    
+                    mem_type = MemoryType(mem_type_str)
+                    
+                    # Create Object
+                    conf = float(item.get("confidence", 0.0))
+                    mem = MemoryObject(
+                        type=mem_type,
+                        key=item.get("key", "extracted_info"),
+                        value=item.get("value", ""),
+                        source_turn=turn_number,
+                        last_recalled_turn=turn_number,
+                        heat=min(1.0, conf),
+                        confidence=conf,
+                    )
+                    candidates.append(mem)
+                except Exception as e:
+                    # Skip malformed items
+                    continue
+
+        except Exception as e:
+            # In production, log this error to your file
+            print(f"[Sentinel Error] Extraction failed: {e}")
+
+        # 4. Filter Results
+        filtered_in  = [c for c in candidates if c.confidence >= self.threshold]
+        filtered_out = [c for c in candidates if c.confidence < self.threshold]
+
+        return ExtractionResult(
+            candidates=candidates,
+            raw_turn=user_message,
+            turn_number=turn_number,
+            filtered_in=filtered_in,
+            filtered_out=filtered_out,
+        )
