@@ -54,12 +54,12 @@ if not API_KEY:
     )
 
 
-MODEL_ID = "gemini-2.5-flash-preview-04-17"
+MODEL_ID = "gemini-2.5-flash"
 
 genai.configure(api_key=API_KEY)
 
 
-# ─── Gemini Wrapper ───────────────────────────────────────────────────────────
+#  Gemini Wrapper
 
 def gemini_wrapper(system_prompt: str, user_message: str, history: list) -> str:
     """
@@ -84,15 +84,6 @@ def gemini_wrapper(system_prompt: str, user_message: str, history: list) -> str:
         model_name=MODEL_ID,
         system_instruction=system_prompt,
     )
-
-    # Convert Mnemosyne history format → Gemini format.
-    # Mnemosyne: role = "user" | "assistant"
-    # Gemini:    role = "user" | "model"
-    #
-    # Gemini requires history to strictly alternate user/model and end
-    # on a "model" turn. The engine guarantees this: history always
-    # contains complete pairs (user + assistant) because appending happens
-    # after this function returns. Empty history on turn 1 is also valid.
     gemini_history = []
     for turn in history:
         # FIX WARN-4: skip error responses so they do not pollute history
@@ -124,7 +115,7 @@ def gemini_wrapper(system_prompt: str, user_message: str, history: list) -> str:
         return error_msg
 
 
-# ─── Main App ─────────────────────────────────────────────────────────────────
+# Main App
 
 def main():
     engine = MnemosyneEngine(
@@ -141,7 +132,7 @@ def main():
         try:
             user_input = input("You: ").strip()
 
-            # FIX WARN-2: skip empty input — avoids ChromaDB query with empty string
+        
             if not user_input:
                 continue
 
