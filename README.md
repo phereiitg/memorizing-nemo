@@ -243,6 +243,14 @@ The system defaults to **`gemini-1.5-flash`** for speed and efficiency.
 
 ---
 
+## 🧪 Running the Automated Demo
+
+To verify the memory pipeline works without manual typing, run the demo script. This script simulates a conversation where the user introduces themselves, states a preference, and asks for a recommendation based on that memory.
+
+**Linux/Mac:**
+```bash
+sh run_demo.sh
+```
 ## 📜 License
 
 MIT License
